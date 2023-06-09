@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "easing.h"
+#include "randq.h"
 #include "tigr.h"
 
 
@@ -22,6 +23,7 @@ Tigr *screen;
 uint32_t numPositions;
 Pos positions[1024];
 Pos targetPositions[1024];
+TPixel colors[1024];
 float travelTime = 0;
 TPixel black = { 0, 0, 0, 255 };
 
@@ -31,6 +33,8 @@ float maxf(float first, float second);
 float minf(float first, float second);
 
 int main(int argc, char *argv[]) {
+	srandqd(0);
+
     screen = tigrWindow(WIDTH, HEIGHT, "Frame Buffer", TIGR_FIXED);
     tigrClear(screen, tigrRGB(255, 151, 5));
 
@@ -44,6 +48,9 @@ int main(int argc, char *argv[]) {
         targetPositions[index].y = y * SEP + (HEIGHT / 2) - yOffset;
         positions[index].x = WIDTH / 2;
         positions[index].y = HEIGHT / 2;
+
+		uint32_t color = randqd_uint32();
+		colors[index] = tigrRGB(color & 0xFF, (color & 0xFF00) >> 8, (color & 0xFF0000) >> 16);
     }
 
     while (!tigrClosed(screen) && !tigrKeyDown(screen, TK_ESCAPE)) {
@@ -67,7 +74,8 @@ void update(float dt) {
 		float yDist = targetPositions[index].y - positions[index].y;
         float y = positions[index].y + (CubicEaseInOut(rate) * yDist);
 
-		tigrFillRect(screen, x, y, SIZE, SIZE, black);
+		float size = QuadraticEaseOut(rate) * SIZE;
+		tigrFillRect(screen, x, y, size, size, colors[index]);
     }
 }
 

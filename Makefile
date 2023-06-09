@@ -15,16 +15,18 @@ VPATH+=src
 CFLAGS += -Iinc
 LDFLAGS+=-lm
 
+SRC=framebuffer.c tigr.c easing.c randq.c
+
 .PHONY: fast
-fast: framebuffer.c tigr.c easing.c
+fast: $(SRC)
 	gcc $^ -O3 -march=native -mtune=native -o ${PROG_NAME} $(CFLAGS) $(LDFLAGS)
 
 .PHONY: debug
-debug : framebuffer.c tigr.c easing.c
+debug : $(SRC)
 	gcc $^ -O0 -g -o ${PROG_NAME} $(CFLAGS) $(LDFLAGS)
 
 .PHONY: dev
-dev: framebuffer.c tigr.c easing.c
+dev: $(SRC)
 	tcc $^ -O0 -o ${PROG_NAME} $(CFLAGS) $(LDFLAGS)
 
 .PHONY: clean

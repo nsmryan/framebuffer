@@ -31,7 +31,7 @@ dev: $(SRC)
 
 .PHONY: clean
 clean:
-	rm framebuffer
+	-rm framebuffer
 
 .PHONY: run
 run:

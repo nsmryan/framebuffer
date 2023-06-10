@@ -42,6 +42,7 @@ float fbm(float x, float y, float gain, int octaves, int hgrid);
 float noise(int x, int y);
 float smoothstep(float edge0, float edge1, float t);
 bool within(float left, float top, float width, float height, float x, float y);
+bool withinCircle(float midX, float midY, float radius, float x, float y);
 int toIndex(int x, int y);
 float perlin(float x, float y, float freq, float gain, int depth);
 float noise2d(float x, float y);
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
 	srandqd(0);
 
 	screen = tigrWindow(WIDTH, HEIGHT, "Frame Buffer", TIGR_FIXED);
-	tigrClear(screen, tigrRGB(255, 151, 5));
+	tigrClear(screen, black);//tigrRGB(255, 151, 5));
 
 	numPositions = 10 * 10;
 	float xOffset = 5 * SEP;
@@ -73,7 +74,8 @@ int main(int argc, char *argv[]) {
         //printf("dt = %.3f\n", dt);
 		update(dt);
 		tigrUpdate(screen);
-		tigrClear(screen, tigrRGB(255, 151, 5));
+		//tigrClear(screen, tigrRGB(255, 151, 5));
+        tigrClear(screen, black);//tigrRGB(255, 151, 5));
 	}
 
 	tigrFree(screen);
@@ -82,8 +84,8 @@ int main(int argc, char *argv[]) {
 void update(float dt) {
 	totalTime += dt;
 
-	//moveRectangles();
 	tryNoise(dt);
+	//moveRectangles();
 }
 
 void tryNoise(float dt) {
@@ -94,33 +96,27 @@ void tryNoise(float dt) {
 			float newX = x;
 			float newY = y;
 
-			float gain = 0.1;
-			float freq = 0.15;
-			int octaves = 6;
-            float zoom = 1.0;
+			float gain = 0.05;
+			float freq = 0.10;
+			int octaves = 1;
 
 			float value = 0;
 
 			float scale = 15;
-			//value = perlin(x + offset, y + offset, gain, octaves);
-			//value = perlin(x + value, y + value, freq, gain, octaves);
 			value = perlin(x + offset, y + offset, freq, gain, octaves) * 20;
 			value = perlin(x + value + speed, y + value + speed, freq, gain, octaves);
-			//newX += scale * smoothstep(-1.0, 1.0, value);
 			newX += scale * value;
 
             value = 0;
-			//value = perlin(x + offset, y + offset, gain, octaves);
-			//value = perlin(x + value, y + value, freq, gain, octaves);
 			value = perlin(x + offset * 2, y + offset * 2, freq, gain, octaves) * 20;
 			value = perlin(x + value + speed, y + value + speed, freq, gain, octaves);
-			//newY += scale * smoothstep(-1.0, 1.0, value);
 			newY += scale * value;
 
-			float dist = sqrt(fabs(((x - newX)) + ((y - newY)))) / scale;
+			float dist = 1.0 - sqrt(fabs(((x - newX)) + ((y - newY)))) / scale;
 			TPixel color = tigrRGB(clamp(0, 255, orange.r * dist), clamp(0, 255, orange.g * dist), clamp(0, 255, orange.b * dist));
 
-			if (within(10, 10, WIDTH - 10, HEIGHT - 10, newX, newY)) {
+			//if (within(10, 10, WIDTH - 10, HEIGHT - 10, newX, newY)) {
+			if (withinCircle(WIDTH/2, HEIGHT/2, WIDTH / 2.4, newX, newY)) {
 				int index = toIndex(x, y);
 				screen->pix[index] = color;
 			}
@@ -267,3 +263,9 @@ float perlin(float x, float y, float freq, float gain, int depth)
     return fin/div;
 }
 // END from https://gist.github.com/nowl/828013
+
+bool withinCircle(float midX, float midY, float radius, float x, float y) {
+    float xDiff = x - midX;
+    float yDiff = y - midY;
+    return fabs(xDiff * xDiff + yDiff * yDiff) <= (radius * radius);
+}

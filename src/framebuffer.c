@@ -30,6 +30,7 @@ TPixel orange = { 255, 151, 5 };
 
 void update(float dt);
 void moveRectangles(void);
+void sun(float dt);
 void tryNoise(float dt);
 
 float clamp(float start, float end, float value);
@@ -85,10 +86,20 @@ void update(float dt) {
 	totalTime += dt;
 
 	tryNoise(dt);
+    //sun(dt);
 	//moveRectangles();
 }
 
 void tryNoise(float dt) {
+	for (int y = 0; y < screen->h; y++) {
+		for (int x = 0; x < screen->w; x++) {
+            TPixel color = blendColors(black, white, noise2d(x, y));
+            screen->pix[index] = color;
+        }
+    }
+}
+
+void sun(float dt) {
     float midX = screen->w / 2;
     float midY = screen->h / 2;
     float radius = screen->w / 2.4;
@@ -110,7 +121,6 @@ void tryNoise(float dt) {
 			float scale = 30;
 
             float circleDist = distance(midX, midY, newX, newY);
-            //scale = scale * SineEaseIn(circleDist / radius);
 
             // Perlin noise application to position.
 			value = perlin(x + offset, y + offset, freq, gain, octaves) * mag;

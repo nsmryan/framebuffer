@@ -27,11 +27,16 @@ float totalTime = 0;
 TPixel black = { 0, 0, 0, 255 };
 TPixel white = { 255, 255, 255, 255 };
 TPixel orange = { 255, 151, 5 };
+TPixel cream = { 0xFD, 0xFD, 0xD2 };
+TPixel purple = { 117, 52, 115 };
 
 void update(float dt);
+
 void moveRectangles(void);
 void sun(float dt);
 void tryNoise(float dt);
+void wavey(float dt);
+void shapes(float dt);
 
 float clamp(float start, float end, float value);
 float maxf(float first, float second);
@@ -47,6 +52,9 @@ int toIndex(int x, int y);
 float perlin(float x, float y, float freq, float gain, int depth);
 float noise2d(float x, float y);
 float distance(float midX, float midY, float x, float y);
+float sdfCircle(float midX, float midY, float radius, float x, float y);
+float sdfRect(float left, float top, float width, float height, float x, float y);
+float lerp(float a, float b, float f);
 
 int main(int argc, char *argv[]) {
 	srandqd(0);
@@ -85,15 +93,95 @@ int main(int argc, char *argv[]) {
 void update(float dt) {
 	totalTime += dt;
 
-	tryNoise(dt);
+    shapes(dt);
+    //wavey(dt);
+	//tryNoise(dt);
     //sun(dt);
 	//moveRectangles();
 }
 
-void tryNoise(float dt) {
+void shapes(float dt) {
+    float xCenter = screen->w / 2;
+    float yCenter = screen->h / 2;
+	float radius = 80;
+	float thickness = 1.0;
+
 	for (int y = 0; y < screen->h; y++) {
 		for (int x = 0; x < screen->w; x++) {
-            TPixel color = blendColors(black, white, noise2d(x, y));
+			float newX = x + 0.5;
+			float newY = y + 0.5;
+            TPixel color = black;
+			float dist = distance(xCenter, yCenter, newX, newY);
+			float circleDist = sdfCircle(xCenter, yCenter, radius, newX, newY);
+			float rectDist = sdfRect(100, 100, 300, 300, newX, newY);
+			//float absDist = lerp(rectDist, circleDist);
+			float absDist = rectDist;
+			if (absDist > 0) {
+				float percent = absDist / radius;
+				color = blendColors(white, black, percent);
+			} else if (absDist < 0) {
+				color = white;
+			}
+            int index = toIndex(x, y);
+            screen->pix[index] = color;
+        }
+    }
+}
+
+void wavey(float dt) {
+    float xCenter = screen->w / 2;
+    float yCenter = screen->h / 2;
+
+    float scale0 = 0.1;
+    float scale1 = 0.7;
+    float scale2 = 1.15;
+    float zoom = 0.30;
+    float mag = 20;
+    float offset = 0.0;
+    float offset2 = 0.0;
+    float time = totalTime * 5;
+	for (int y = 0; y < screen->h; y++) {
+		for (int x = 0; x < screen->w; x++) {
+            TPixel color = black;
+
+            float radians = atan2f(y - yCenter, x - xCenter);
+            radians /= M_PI;
+            radians = fabs(radians * 5.0);
+            float newX = radians * 20;
+            float dist = distance(xCenter, yCenter, x, y) * 1.5;
+
+            float input = newX * zoom;
+            float value = sin(input * scale0 + time) * mag;
+            value += sin(input * scale1 + offset + time) * mag;
+            value += sin(input * scale2 + offset2 + time) * mag;
+            value += perlin(x, y, 0.1, 0.4, 1) * sin(time * 0.3) * 30;
+            value += screen->h / 2;
+
+            if (dist <= value) {
+                color = orange;
+                color = blendColors(color, cream, (1.0 - (dist / value)));
+            }
+
+            int index = toIndex(x, y);
+            screen->pix[index] = color;
+        }
+    }
+}
+
+void tryNoise(float dt) {
+    TPixel orange = { 255, 151, 5 };
+	for (int y = 0; y < screen->h; y++) {
+		for (int x = 0; x < screen->w; x++) {
+            float timeSpeed = 0.001;
+            float time = totalTime * timeSpeed;
+
+            float scale = 0.001;
+            float noiseX = noise2d(x * scale + time, y * scale + time);
+            float noiseY = noise2d(x * scale + -time, y * scale + -time);
+            float value = noise2d(noiseX, noiseY);
+            TPixel color = blendColors(black, white, (value));
+
+            int index = toIndex(x, y);
             screen->pix[index] = color;
         }
     }
@@ -136,10 +224,9 @@ void sun(float dt) {
 
 			float dist = 1.0 - sqrt(fabs(((x - newX)) + ((y - newY)))) / scale;
 			TPixel color = tigrRGB(clamp(0, 255, orange.r * dist), clamp(0, 255, orange.g * dist), clamp(0, 255, orange.b * dist));
-            TPixel purple = { 117, 52, 115 };
-			purple = tigrRGB(clamp(0, 255, purple.r * dist), clamp(0, 255, purple.g * dist), clamp(0, 255, purple.b * dist));
-			purple = blendColors(purple, black, 0.7);
-            color = blendColors(color, purple, circleDist / radius);
+			TPixel mixed = tigrRGB(clamp(0, 255, purple.r * dist), clamp(0, 255, purple.g * dist), clamp(0, 255, purple.b * dist));
+			mixed = blendColors(mixed, black, 0.7);
+            color = blendColors(color, mixed, circleDist / radius);
 
 			if (withinCircle(midX, midY, radius, newX, newY)) {
 				int index = toIndex(x, y);
@@ -301,6 +388,17 @@ float distance(float midX, float midY, float x, float y) {
     return sqrt(fabs(xDiff * xDiff + yDiff * yDiff));
 }
 
+float sdfCircle(float midX, float midY, float radius, float x, float y) {
+	float dist = distance(midX, midY, x, y);
+	return radius - dist;
+}
+
+float sdfRect(float left, float top, float width, float height, float x, float y) {
+	float xDist = minf(x - left, x - (left + width));
+	float yDist = minf(y - top, y - (top + height));
+	return minf(xDist, yDist);
+}
+
 TPixel blendColors(TPixel first, TPixel second, float percent) {
     TPixel color = { (first.r * percent) + (second.r * (1.0 - percent)),
                      (first.g * percent) + (second.g * (1.0 - percent)),
@@ -315,4 +413,9 @@ TPixel scaleColor(TPixel color, float scale) {
                      clamp(0, 255, color.b * scale),
                      clamp(0, 255, color.a * scale) };
     return newColor;
+}
+
+float lerp(float a, float b, float f)
+{
+    return a * (1.0 - f) + (b * f);
 }

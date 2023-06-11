@@ -19,7 +19,7 @@ SRC=framebuffer.c tigr.c easing.c randq.c
 
 .PHONY: fast
 fast: $(SRC)
-	gcc $^ -O3 -march=native -mtune=native -o ${PROG_NAME} $(CFLAGS) $(LDFLAGS)
+	gcc $^ -DWIDTH=512 -DHEIGHT=512 -O3 -march=native -mtune=native -o ${PROG_NAME} $(CFLAGS) $(LDFLAGS)
 
 .PHONY: debug
 debug : $(SRC)
@@ -27,7 +27,7 @@ debug : $(SRC)
 
 .PHONY: dev
 dev: $(SRC)
-	tcc $^ -O0 -o ${PROG_NAME} $(CFLAGS) $(LDFLAGS)
+	tcc $^ -DWIDTH=256 -DHEIGHT=256 -O0 -o ${PROG_NAME} $(CFLAGS) $(LDFLAGS)
 
 .PHONY: clean
 clean:

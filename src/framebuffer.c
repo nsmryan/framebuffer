@@ -8,9 +8,6 @@
 #include "tigr.h"
 
 
-#define WIDTH 512
-#define HEIGHT 512
-
 #define SIZE 20U
 #define SEP (SIZE * 2U)
 #define SPEED 0.3
@@ -43,9 +40,12 @@ float noise(int x, int y);
 float smoothstep(float edge0, float edge1, float t);
 bool within(float left, float top, float width, float height, float x, float y);
 bool withinCircle(float midX, float midY, float radius, float x, float y);
+TPixel blendColors(TPixel first, TPixel second, float percent);
+TPixel scaleColor(TPixel color, float scale);
 int toIndex(int x, int y);
 float perlin(float x, float y, float freq, float gain, int depth);
 float noise2d(float x, float y);
+float distance(float midX, float midY, float x, float y);
 
 int main(int argc, char *argv[]) {
 	srandqd(0);
@@ -89,12 +89,16 @@ void update(float dt) {
 }
 
 void tryNoise(float dt) {
-	for (int y = 0; y < HEIGHT; y++) {
-		for (int x = 0; x < WIDTH; x++) {
+    float midX = screen->w / 2;
+    float midY = screen->h / 2;
+    float radius = screen->w / 2.4;
+
+	for (int y = 0; y < screen->h; y++) {
+		for (int x = 0; x < screen->w; x++) {
 			float offset = totalTime * 10;
-			float speed = 0;
 			float newX = x;
 			float newY = y;
+
 
 			float gain = 0.05;
 			float freq = 0.10;
@@ -102,21 +106,32 @@ void tryNoise(float dt) {
 
 			float value = 0;
 
-			float scale = 15;
-			value = perlin(x + offset, y + offset, freq, gain, octaves) * 20;
-			value = perlin(x + value + speed, y + value + speed, freq, gain, octaves);
+            float mag = 20;
+			float scale = 30;
+
+            float circleDist = distance(midX, midY, newX, newY);
+            //scale = scale * SineEaseIn(circleDist / radius);
+
+            // Perlin noise application to position.
+			value = perlin(x + offset, y + offset, freq, gain, octaves) * mag;
+			value = perlin(x + value, y + value, freq, gain, octaves);
 			newX += scale * value;
 
             value = 0;
-			value = perlin(x + offset * 2, y + offset * 2, freq, gain, octaves) * 20;
-			value = perlin(x + value + speed, y + value + speed, freq, gain, octaves);
+			value = perlin(x + offset * 2, y + offset * 2, freq, gain, octaves) * mag;
+			value = perlin(x + value, y + value, freq, gain, octaves);
 			newY += scale * value;
+
+            circleDist = distance(midX, midY, newX, newY);
 
 			float dist = 1.0 - sqrt(fabs(((x - newX)) + ((y - newY)))) / scale;
 			TPixel color = tigrRGB(clamp(0, 255, orange.r * dist), clamp(0, 255, orange.g * dist), clamp(0, 255, orange.b * dist));
+            TPixel purple = { 117, 52, 115 };
+			purple = tigrRGB(clamp(0, 255, purple.r * dist), clamp(0, 255, purple.g * dist), clamp(0, 255, purple.b * dist));
+			purple = blendColors(purple, black, 0.7);
+            color = blendColors(color, purple, circleDist / radius);
 
-			//if (within(10, 10, WIDTH - 10, HEIGHT - 10, newX, newY)) {
-			if (withinCircle(WIDTH/2, HEIGHT/2, WIDTH / 2.4, newX, newY)) {
+			if (withinCircle(midX, midY, radius, newX, newY)) {
 				int index = toIndex(x, y);
 				screen->pix[index] = color;
 			}
@@ -125,7 +140,7 @@ void tryNoise(float dt) {
 }
 
 int toIndex(int x, int y) {
-	return x + y * WIDTH;
+	return x + y * screen->w;
 }
 
 void moveRectangles(void) {
@@ -268,4 +283,26 @@ bool withinCircle(float midX, float midY, float radius, float x, float y) {
     float xDiff = x - midX;
     float yDiff = y - midY;
     return fabs(xDiff * xDiff + yDiff * yDiff) <= (radius * radius);
+}
+
+float distance(float midX, float midY, float x, float y) {
+    float xDiff = x - midX;
+    float yDiff = y - midY;
+    return sqrt(fabs(xDiff * xDiff + yDiff * yDiff));
+}
+
+TPixel blendColors(TPixel first, TPixel second, float percent) {
+    TPixel color = { (first.r * percent) + (second.r * (1.0 - percent)),
+                     (first.g * percent) + (second.g * (1.0 - percent)),
+                     (first.b * percent) + (second.b * (1.0 - percent)),
+                     (first.a * percent) + (second.a * (1.0 - percent)), };
+    return color;
+}
+
+TPixel scaleColor(TPixel color, float scale) {
+    TPixel newColor = { clamp(0, 255, color.r * scale),
+                     clamp(0, 255, color.g * scale),
+                     clamp(0, 255, color.b * scale),
+                     clamp(0, 255, color.a * scale) };
+    return newColor;
 }
